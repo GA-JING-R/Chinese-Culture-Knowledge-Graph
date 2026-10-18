@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>汉文化知识图谱 · 人物 · 朝代 · 著作 · 地点</title>
+    <meta name="description" content="汉文化知识图谱可视化平台：人物、朝代、著作、地点的关系网络与智能问答。">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='5' fill='%23b0392e'/><text x='16' y='23' font-size='19' text-anchor='middle' fill='%23fff5ec' font-family='serif'>汉</text></svg>">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="app">
+
+    <!-- ======================= 顶栏 ======================= -->
+    <header class="topbar">
+        <div class="brand">
+            <button class="icon-btn" id="sidebarToggle" type="button" title="展开 / 收起侧栏">☰</button>
+            <div class="seal">汉</div>
+            <div class="brand-text">
+                <div class="brand-title">汉文化知识图谱</div>
+                <div class="brand-sub">HAN CULTURE KNOWLEDGE GRAPH</div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="statNodes">—</div><div class="stat-label">节点</div></div>
+            <div class="stat"><div class="stat-value" id="statRels">—</div><div class="stat-label">关系</div></div>
+            <div class="stat"><div class="stat-value" id="statPersons">—</div><div class="stat-label">人物</div></div>
+            <div class="stat"><div class="stat-value" id="statDynasties">—</div><div class="stat-label">朝代</div></div>
+            <div class="stat"><div class="stat-value" id="statWorks">—</div><div class="stat-label">著作</div></div>
+            <div class="stat"><div class="stat-value" id="statLocations">—</div><div class="stat-label">地点</div></div>
+        </div>
+    </header>
+
+    <!-- ======================= 异常提示条 ======================= -->
+    <div class="banner" id="banner"><span id="bannerText"></span></div>
+
+    <!-- ======================= 主体 ======================= -->
+    <div class="stage">
+
+        <!-- 侧栏 -->
+        <aside class="sidebar" id="sidebar">
+
+            <section class="panel">
+                <div class="panel-title">检 索<span class="hint">按名称查找</span></div>
+                <input type="text" id="searchInput" class="input" autocomplete="off"
+                       placeholder="输入人物、朝代、著作或地名…">
+                <div class="result-list" id="searchResults"></div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-title">节点详情<span class="hint">点击图中节点</span></div>
+                <div id="nodeDetail">
+                    <p class="empty-tip">选中一个节点，这里会显示它的全部关联关系</p>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-title">相似人物<span class="hint">朝代 / 出生地 / 共同友人</span></div>
+                <div id="recommendList">
+                    <p class="empty-tip">选中一位人物后自动给出推荐</p>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-title">智能问答<span class="hint">自然语言提问</span></div>
+                <div class="field-row">
+                    <input type="text" id="qaInput" class="input" autocomplete="off"
+                           placeholder="例：李白在哪个朝代？">
+                    <button type="button" id="qaBtn" class="btn btn-primary">提问</button>
+                </div>
+                <div class="qa-log" id="qaLog"></div>
+                <div class="qa-samples" id="qaSamples">
+                    <button type="button" class="qa-sample" data-q="李白在哪个朝代？">李白在哪个朝代？</button>
+                    <button type="button" class="qa-sample" data-q="孔子出生于哪里？">孔子出生于哪里？</button>
+                    <button type="button" class="qa-sample" data-q="苏轼写了什么？">苏轼写了什么？</button>
+                    <button type="button" class="qa-sample" data-q="杜甫的朋友有谁？">杜甫的朋友有谁？</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-title">路径查询<span class="hint">最短路径，最多 5 跳</span></div>
+                <div class="field-row" style="margin-bottom:8px;">
+                    <input type="text" id="pathSource" class="input" list="nodeOptions" autocomplete="off" placeholder="起点">
+                    <input type="text" id="pathTarget" class="input" list="nodeOptions" autocomplete="off" placeholder="终点">
+                </div>
+                <datalist id="nodeOptions"></datalist>
+                <div class="field-row">
+                    <button type="button" id="searchPathBtn" class="btn btn-primary" style="flex:1;">查找路径</button>
+                    <button type="button" id="clearPathBtn" class="btn">清除</button>
+                </div>
+                <div class="path-result" id="pathResult">
+                    <p class="empty-tip">填写两个节点名，查看它们之间的最短路径</p>
+                </div>
+            </section>
+
+        </aside>
+
+        <!-- 图谱画布 -->
+        <main class="canvas-wrap">
+            <div id="chart"></div>
+
+            <!-- 分类过滤（点击可隐藏 / 显示某一类） -->
+            <div class="legend" id="legendList"></div>
+
+            <!-- 工具栏 -->
+            <div class="toolbar">
+                <button type="button" class="tool-btn" id="tZoomIn"      title="放大">＋</button>
+                <button type="button" class="tool-btn" id="tZoomOut"     title="缩小">－</button>
+                <button type="button" class="tool-btn" id="tFit"         title="适应画布">⤢</button>
+                <button type="button" class="tool-btn" id="tReset"       title="重置视图">⟲</button>
+                <button type="button" class="tool-btn on" id="tEdgeLabel" title="显示 / 隐藏关系名称">Aa</button>
+                <button type="button" class="tool-btn" id="tExport"      title="导出为 PNG 图片">⤓</button>
+            </div>
+
+            <!-- 加载遮罩 -->
+            <div class="loading" id="loading">
+                <div style="text-align:center;">
+                    <div class="spinner" style="margin:0 auto;"></div>
+                    <div class="loading-text" id="loadingText">正在读取图谱…</div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+</div>
+
+<div class="mask" id="mask"></div>
+<div class="toast" id="toast"></div>
+
+<!-- ECharts：优先使用本地副本，缺失时回退 CDN（离线也能正常打开） -->
+<script src="{{ url_for('static', filename='vendor/echarts.min.js') }}"></script>
+<script>
+    if (!window.echarts) {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');
+    }
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
